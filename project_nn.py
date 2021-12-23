@@ -5,17 +5,16 @@ import os
 import cv2
 import matplotlib.pyplot as plt
 
-categories = {"elefante": "elephant", "farfalla": "butterfly", "gatto": "cat"}
-animals = ["elephant", "butterfly", "cat"]
 img_size = 100
-
 n = img_size * img_size  # features
 # m = 36  # observations
 c = 3  # class
 
-hidden_layer_count = 1
-learning_rate = 0.005
+hidden_layer_count = 0
+learning_rate = 0.001
+epoch = 20
 batch_size = 12
+total_train_image_count = 36
 neuron_numbers = [n, 4, 3]  # hl1, hl2
 
 x_train = np.zeros((n, batch_size))  # 10000, 12
@@ -58,6 +57,7 @@ def tanh(x):
 
 
 def relu(x):
+    print(x.shape)
     return np.maximum(x, 0)
 
 
@@ -70,7 +70,7 @@ def derivative_sigmoid(x):
     d = np.zeros((x.shape[0], x.shape[1]))
     for i in range(x.shape[0]):
         for j in range(x.shape[1]):
-            d[i][j] = (x[i][j])*(1-x[i][j])
+            d[i][j] = (x[i][j]) * (1 - x[i][j])
     return d
 
 
@@ -85,25 +85,25 @@ def derivative_relu(x):
 def forward_propagation(x, parameters):
     w = []
     b = []
-    for i in range(hidden_layer_count+1):
+    for i in range(hidden_layer_count + 1):
         w.append(parameters['w'][i])
         b.append(parameters['b'][i])
 
     a = []
     z = []
-    for i in range(hidden_layer_count+1):
+    for i in range(hidden_layer_count + 1):
         if i == 0:  # first
             zi = np.dot(w[i], x) + b[i]
             z.append(zi)
         else:
-            zi = np.dot(w[i], a[i-1]) + b[i]
+            zi = np.dot(w[i], a[i - 1]) + b[i]
             z.append(zi)
 
         if i == hidden_layer_count:  # last element
             ai = softmax(zi)
             a.append(ai)
         else:
-            ai = sigmoid(zi)
+            ai = tanh(zi)
             a.append(ai)
 
     return a
@@ -117,31 +117,44 @@ def cost_function(softmax_layer, y):
             if y[i][j] == 1:
                 probability = softmax_layer[i][j]
                 loss += (-(math.log(probability)))
-    cost = (1/mx) * loss
+    cost = (1 / mx) * loss
     return cost
 
 
 def backward_prop(x, y, parameters, forward_cache):
-    w1 = parameters['w'][0]
-    b1 = parameters['b'][0]
-    w2 = parameters['w'][1]
-    b2 = parameters['b'][1]
+    w = parameters["w"].copy()
+    w.reverse()
+    a = forward_cache
+    a.reverse()
+    a.append(x)
 
-    a1 = forward_cache[0]
-    a2 = forward_cache[1]
+    dz = []
+    dw = []
+    db = []
 
-    dz2 = (a2 - y)
-    dw2 = np.dot(dz2, a1.T)
-    db2 = np.sum(dz2, axis=1, keepdims=True)
+    dz_output = (a[0] - y)
+    dw_output = np.dot(dz_output, a[1].T)
+    db_output = np.sum(dz_output, axis=1, keepdims=True)
 
-    dz1 = np.dot(w2.T, dz2) * derivative_sigmoid(a1)
-    dw1 = np.dot(dz1, x.T)
-    db1 = np.sum(dz1, axis=1, keepdims=True)
+    dz.append(dz_output)
+    dw.append(dw_output)
+    db.append(db_output)
 
-    parameters['w'][0] = parameters['w'][0] - learning_rate * dw1
-    parameters['b'][0] = parameters['b'][0] - learning_rate * db1
-    parameters['w'][1] = parameters['w'][1] - learning_rate * dw2
-    parameters['b'][1] = parameters['b'][1] - learning_rate * db2
+    for i in range(hidden_layer_count):
+        dz_i = np.dot(w[i].T, dz[i]) * derivative_tanh(a[i+1])
+        dw_i = np.dot(dz_i, a[i+2].T)
+        db_i = np.sum(dz_i, axis=1, keepdims=True)
+        dz.append(dz_i)
+        dw.append(dw_i)
+        db.append(db_i)
+
+    dz.reverse()
+    dw.reverse()
+    db.reverse()
+
+    for i in range(hidden_layer_count + 1):
+        parameters['w'][i] = parameters['w'][i] - learning_rate * dw[i]
+        parameters['b'][i] = parameters['b'][i] - learning_rate * db[i]
 
     return parameters
 
@@ -213,7 +226,7 @@ def main():
 
     cost_list = []
 
-    for i in range(10):  # epoch
+    for i in range(epoch):  # epoch
         data = []
         for j in range(0, 36, batch_size):  # batch
             create_data(data, url_category_data, j, j + batch_size)
@@ -227,11 +240,10 @@ def main():
 
             print("Cost after", j // 12 + 1, "batch is :", cost)
 
-        if i % (1 / 1) == 0:
-            print("Cost after", i, "iterations is :", cost)
-            print()
+        print("Cost after", i, "iterations is :", cost)
+        print()
 
-    t = np.arange(0, 10*3)
+    t = np.arange(0, epoch * c)
     plt.plot(t, cost_list)
     plt.show()
 
