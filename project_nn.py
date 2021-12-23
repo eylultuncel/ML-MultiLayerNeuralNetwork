@@ -10,12 +10,12 @@ n = img_size * img_size  # features
 # m = 36  # observations
 c = 3  # class
 
-hidden_layer_count = 0
-learning_rate = 0.001
-epoch = 20
+hidden_layer_count = 1
+learning_rate = 0.005
+epoch = 100
 batch_size = 12
 total_train_image_count = 36
-neuron_numbers = [n, 4, 3]  # hl1, hl2
+neuron_numbers = [n, 4, 3, 3]  # hl1, hl2
 
 x_train = np.zeros((n, batch_size))  # 10000, 12
 y_train = np.zeros((c, batch_size))  # 10, 12
@@ -42,6 +42,10 @@ def flatten_and_normalize_data(data, start_index, end_index):
         # print(data[i][0])
         # plt.imshow(data[i][0].reshape((img_size, img_size)), cmap='gray', vmin=0, vmax=1)
         # plt.show()
+
+
+def visualize_parameters(last_layer):
+    print(last_layer.shape)
 
 
 def sigmoid(x):
@@ -141,8 +145,8 @@ def backward_prop(x, y, parameters, forward_cache):
     db.append(db_output)
 
     for i in range(hidden_layer_count):
-        dz_i = np.dot(w[i].T, dz[i]) * derivative_tanh(a[i+1])
-        dw_i = np.dot(dz_i, a[i+2].T)
+        dz_i = np.dot(w[i].T, dz[i]) * derivative_tanh(a[i + 1])
+        dw_i = np.dot(dz_i, a[i + 2].T)
         db_i = np.sum(dz_i, axis=1, keepdims=True)
         dz.append(dz_i)
         dw.append(dw_i)
@@ -159,7 +163,8 @@ def backward_prop(x, y, parameters, forward_cache):
     return parameters
 
 
-def init_parameters(parameters):
+def init_parameters():
+    parameters = {}
     np.random.seed(101)
 
     weight = []
@@ -181,7 +186,7 @@ def init_parameters(parameters):
     return parameters
 
 
-def initialization(data):
+def init_train(data):
     for i in range(x_train.shape[0]):  # 10000
         for j in range(x_train.shape[1]):  # 36
             x_train[i][j] = data[j][0][i]
@@ -214,16 +219,13 @@ def all_image_urls_to_csv():
     return train_df
 
 
-def main():
+def main(learning_rate=learning_rate):
     train_df = all_image_urls_to_csv()
     url_category_data = np.array(train_df.iloc[:, :])
     np.random.seed(101)
     np.random.shuffle(url_category_data)
-    print(url_category_data)
 
-    parameters = {}
-    parameters = init_parameters(parameters)
-
+    parameters = init_parameters()
     cost_list = []
 
     for i in range(epoch):  # epoch
@@ -231,7 +233,7 @@ def main():
         for j in range(0, 36, batch_size):  # batch
             create_data(data, url_category_data, j, j + batch_size)
             flatten_and_normalize_data(data, j, j + batch_size)
-            initialization(data)
+            init_train(data)
 
             activation_funcs = forward_propagation(x_train, parameters)
             cost = cost_function(activation_funcs[-1], y_train)  # a2 son layer olmalı
@@ -242,6 +244,8 @@ def main():
 
         print("Cost after", i, "iterations is :", cost)
         print()
+        learning_rate *= 0.2
+
 
     t = np.arange(0, epoch * c)
     plt.plot(t, cost_list)
