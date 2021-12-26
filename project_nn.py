@@ -7,18 +7,15 @@ import matplotlib.pyplot as plt
 
 img_size = 100
 n = img_size * img_size  # features
-# m = 36  # observations
 c = 3  # class
 
 hidden_layer_count = 1
-learning_rate = 0.005
-epoch = 100
+learning_rate = 0.002
+epoch = 10
 batch_size = 12
 total_train_image_count = 36
-neuron_numbers = [n, 4, 3, 3]  # hl1, hl2
+neuron_numbers = [n, 10, 10, 3]  # hl1, hl2
 
-x_train = np.zeros((n, batch_size))  # 10000, 12
-y_train = np.zeros((c, batch_size))  # 10, 12
 
 
 def create_data(data, url_category_data, start_index, finish_index):
@@ -39,7 +36,6 @@ def flatten_and_normalize_data(data, start_index, end_index):
         data[i][0] = arr.reshape((img_size * img_size,)).astype(np.float32)
         for j in range(len(data[i][0])):
             data[i][0][j] = (data[i][0][j] / 255)
-        # print(data[i][0])
         # plt.imshow(data[i][0].reshape((img_size, img_size)), cmap='gray', vmin=0, vmax=1)
         # plt.show()
 
@@ -61,7 +57,6 @@ def tanh(x):
 
 
 def relu(x):
-    print(x.shape)
     return np.maximum(x, 0)
 
 
@@ -107,9 +102,8 @@ def forward_propagation(x, parameters):
             ai = softmax(zi)
             a.append(ai)
         else:
-            ai = tanh(zi)
+            ai = relu(zi)
             a.append(ai)
-
     return a
 
 
@@ -145,7 +139,7 @@ def backward_prop(x, y, parameters, forward_cache):
     db.append(db_output)
 
     for i in range(hidden_layer_count):
-        dz_i = np.dot(w[i].T, dz[i]) * derivative_tanh(a[i + 1])
+        dz_i = np.dot(w[i].T, dz[i]) * derivative_relu(a[i + 1])
         dw_i = np.dot(dz_i, a[i + 2].T)
         db_i = np.sum(dz_i, axis=1, keepdims=True)
         dz.append(dz_i)
@@ -186,7 +180,7 @@ def init_parameters():
     return parameters
 
 
-def init_train(data):
+def init_train(data, x_train, y_train):
     for i in range(x_train.shape[0]):  # 10000
         for j in range(x_train.shape[1]):  # 36
             x_train[i][j] = data[j][0][i]
@@ -213,10 +207,32 @@ def all_image_urls_to_csv():
     })
     train_df = pd.DataFrame(columns=['filename', 'category'])
     for i in range(10):
-        train_df = train_df.append(df[df.category == i].iloc[:500, :])
+        train_df = train_df.append(df[df.category == i].iloc[:, :])
 
     df.to_csv('out.csv', index=False)
     return train_df
+
+
+def performance(softmax_layer, y):
+    mx = y.shape[1]
+    true_count = 0
+
+    print(softmax_layer.shape)
+    print(softmax_layer)
+    print(y)
+    for j in range(softmax_layer.shape[1]):
+        max_prob = -1
+        for i in range(softmax_layer.shape[0]):
+            if max_prob < softmax_layer[i][j]:
+                max_prob = softmax_layer[i][j]
+                print(max_prob)
+
+        for i in range(softmax_layer.shape[0]):
+            if y[i][j] == 1 and softmax_layer[i][j] == max_prob:
+                true_count += 1
+
+    print("true prediction count = ", true_count)
+    print(true_count / batch_size)
 
 
 def main(learning_rate=learning_rate):
@@ -225,27 +241,35 @@ def main(learning_rate=learning_rate):
     np.random.seed(101)
     np.random.shuffle(url_category_data)
 
+    x_train = np.zeros((n, batch_size))  # 10000, 12
+    y_train = np.zeros((c, batch_size))  # 10, 12
+
+    x_test = np.zeros((n, batch_size))  # 10000, 12
+    y_test = np.zeros((c, batch_size))  # 10, 12
+
     parameters = init_parameters()
     cost_list = []
 
     for i in range(epoch):  # epoch
         data = []
-        for j in range(0, 36, batch_size):  # batch
+        for j in range(0, total_train_image_count, batch_size):  # batch
+
             create_data(data, url_category_data, j, j + batch_size)
             flatten_and_normalize_data(data, j, j + batch_size)
-            init_train(data)
+            init_train(data, x_train, y_train)
 
             activation_funcs = forward_propagation(x_train, parameters)
             cost = cost_function(activation_funcs[-1], y_train)  # a2 son layer olmalı
+            performance(activation_funcs[-1], y_train)
+
             parameters = backward_prop(x_train, y_train, parameters, activation_funcs)
             cost_list.append(cost)
 
-            print("Cost after", j // 12 + 1, "batch is :", cost)
+            print("Cost after", j // batch_size + 1, "batch is :", cost)
 
-        print("Cost after", i, "iterations is :", cost)
+        print("Cost after", i, "epoch is :", cost)
         print()
         learning_rate *= 0.2
-
 
     t = np.arange(0, epoch * c)
     plt.plot(t, cost_list)
