@@ -10,11 +10,59 @@ n = img_size * img_size  # features
 c = 10  # class
 
 hidden_layer_count = 1
-learning_rate = 0.005
-epoch = 10
-batch_size = 12
-total_train_image_count = 600
+learning_rate = 0.002
+epoch = 3
+batch_size = 16
+total_train_image_count = 800
 neuron_numbers = [n, 10, 10, 3]  # hl1, hl2
+
+total_validation_image_count = 80
+
+
+def all_image_urls_to_csv():
+    folder_names = os.listdir('../Project/raw-img')
+    category = []
+    files = []
+    i = 0
+    for k, folder in enumerate(folder_names):
+        filenames = os.listdir("../Project/raw-img/" + folder)
+        for file in filenames:
+            files.append("../Project/raw-img/" + folder + "/" + file)
+            category.append(k)
+
+    df = pd.DataFrame({
+        'filename': files,
+        'category': category
+    })
+    train_df = pd.DataFrame(columns=['filename', 'category'])
+    for i in range(10):
+        train_df = train_df.append(df[df.category == i].iloc[:, :])
+
+    df.to_csv('out.csv', index=False)
+    return train_df
+
+
+def init_parameters():
+    parameters = {}
+    np.random.seed(101)
+
+    weight = []
+    bias = []
+
+    for i in range(hidden_layer_count):
+        wei = np.random.randn(neuron_numbers[i + 1], neuron_numbers[i]) * 0.01
+        bia = np.zeros((neuron_numbers[i + 1], 1))
+        weight.append(wei)
+        bias.append(bia)
+
+    wei = np.random.randn(c, neuron_numbers[hidden_layer_count]) * 0.01
+    bia = np.zeros((c, 1))
+    weight.append(wei)
+    bias.append(bia)
+
+    parameters["w"] = weight
+    parameters["b"] = bias
+    return parameters
 
 
 def create_data(data, url_category_data, start_index, finish_index):
@@ -40,8 +88,17 @@ def flatten_and_normalize_data(data, start_index, end_index):
         # plt.show()
     return data
 
-def visualize_parameters(last_layer):
-    print(last_layer.shape)
+
+def init_train(data, x_train, y_train):
+    for i in range(x_train.shape[0]):  # 10000
+        for j in range(x_train.shape[1]):  # 36
+            x_train[i][j] = data[j][0][i]
+
+    for i in range(y_train.shape[1]):  # 36
+        class_index = data[i][1]
+        y_train[class_index][i] = 1
+
+    return x_train, y_train
 
 
 def sigmoid(x):
@@ -157,40 +214,6 @@ def backward_prop(x, y, parameters, forward_cache):
     return parameters
 
 
-def init_parameters():
-    parameters = {}
-    np.random.seed(101)
-
-    weight = []
-    bias = []
-
-    for i in range(hidden_layer_count):
-        wei = np.random.randn(neuron_numbers[i + 1], neuron_numbers[i]) * 0.01
-        bia = np.zeros((neuron_numbers[i + 1], 1))
-        weight.append(wei)
-        bias.append(bia)
-
-    wei = np.random.randn(c, neuron_numbers[hidden_layer_count]) * 0.01
-    bia = np.zeros((c, 1))
-    weight.append(wei)
-    bias.append(bia)
-
-    parameters["w"] = weight
-    parameters["b"] = bias
-    return parameters
-
-
-def init_train(data, x_train, y_train):
-    for i in range(x_train.shape[0]):  # 10000
-        for j in range(x_train.shape[1]):  # 36
-            x_train[i][j] = data[j][0][i]
-
-    for i in range(y_train.shape[1]):  # 36
-        class_index = data[i][1]
-        y_train[class_index][i] = 1
-
-    return x_train, y_train
-
 def all_image_urls_to_csv():
     folder_names = os.listdir('../Project/raw-img')
     category = []
@@ -219,7 +242,7 @@ def performance(softmax_layer, y):
     true_count = 0
 
     # print(softmax_layer.shape)
-    print(softmax_layer)
+    # print(softmax_layer)
     # print(y)
     for j in range(softmax_layer.shape[1]):
         max_prob = -1
@@ -227,7 +250,7 @@ def performance(softmax_layer, y):
             if max_prob < softmax_layer[i][j]:
                 max_prob = softmax_layer[i][j]
 
-        print(max_prob)
+        # print(max_prob)
 
         for i in range(softmax_layer.shape[0]):
             if y[i][j] == 1 and softmax_layer[i][j] == max_prob:
@@ -271,9 +294,21 @@ def main(learning_rate=learning_rate):
 
         print("Cost after", i, "epoch is :", cost)
         print()
-        learning_rate *= 0.2
+        learning_rate *= 0.5
 
-    t = np.arange(0, epoch * c)
+        print("------------------------------------------------")
+        validation_data = []
+        for j in range(total_train_image_count, total_train_image_count + total_validation_image_count, batch_size):
+            validation_data = create_data(validation_data, url_category_data, j, j + batch_size)
+            validation_data = flatten_and_normalize_data(validation_data, j - total_train_image_count,
+                                                         j - total_train_image_count + batch_size)
+            x_test, y_test = init_train(data, x_test, y_test)
+
+            activation_funcs_v = forward_propagation(x_test, parameters)
+            cost = cost_function(activation_funcs_v[-1], y_test)  # a2 son layer olmalı
+            performance(activation_funcs_v[-1], y_test)
+
+    t = np.arange(0, len(cost_list))
     plt.plot(t, cost_list)
     plt.show()
 
