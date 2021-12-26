@@ -9,16 +9,20 @@ img_size = 100
 n = img_size * img_size  # features
 c = 10  # class
 
-hidden_layer_count = 1
-learning_rate = 0.002
-epoch = 3
-batch_size = 16
-total_train_image_count = 800
-neuron_numbers = [n, 10, 10, 3]  # hl1, hl2
+hidden_layer_count = 2
+learning_rate = 0.02
+epoch = 1
+batch_size = 32
 
-total_validation_image_count = 80
+total_train_image_count = 20480
+neuron_numbers = [n]  # as a start only input neurons
+
+total_validation_image_count = 2816
+total_test_image_count = 2816
 
 
+# this function takes all the images urls and their class (which animal)
+# creates a new csv file which has urls
 def all_image_urls_to_csv():
     folder_names = os.listdir('../Project/raw-img')
     category = []
@@ -43,11 +47,18 @@ def all_image_urls_to_csv():
 
 
 def init_parameters():
+    # parameters
     parameters = {}
     np.random.seed(101)
 
     weight = []
     bias = []
+
+    # initializing neuron numbers for each hidden layers
+    for i in range(hidden_layer_count):
+        x = round(math.sqrt(neuron_numbers[i] + c))
+        neuron_numbers.append(x)
+    print(neuron_numbers)
 
     for i in range(hidden_layer_count):
         wei = np.random.randn(neuron_numbers[i + 1], neuron_numbers[i]) * 0.01
@@ -82,9 +93,8 @@ def flatten_and_normalize_data(data, start_index, end_index):
     for i in range(start_index, end_index):
         arr = np.asarray(data[i][0])
         data[i][0] = arr.reshape((img_size * img_size,)).astype(np.float32)
-        for j in range(len(data[i][0])):
-            data[i][0][j] = (data[i][0][j] / 255)
-        # plt.imshow(data[i][0].reshape((img_size, img_size)), cmap='gray', vmin=0, vmax=1)
+        data[i][0] = (data[i][0] / 255)
+        # # plt.imshow(data[i][0].reshape((img_size, img_size)), cmap='gray', vmin=0, vmax=1)
         # plt.show()
     return data
 
@@ -102,11 +112,12 @@ def init_train(data, x_train, y_train):
 
 
 def sigmoid(x):
-    a = np.zeros((x.shape[0], x.shape[1]))
-    for i in range(x.shape[0]):
-        for j in range(x.shape[1]):
-            a[i][j] = 1 / (1 + math.pow(math.e, -x[i][j]))
-    return a
+    return 1 / (1 + np.exp(-x))
+    # a = np.zeros((x.shape[0], x.shape[1]))
+    # for i in range(x.shape[0]):
+    #     for j in range(x.shape[1]):
+    #         a[i][j] = 1 / (1 + math.pow(math.e, -x[i][j]))
+    # return a
 
 
 def tanh(x):
@@ -123,11 +134,12 @@ def softmax(x):
 
 
 def derivative_sigmoid(x):
+    return (1 / (1 + np.exp(-x))) * (1 - (1 / (1 + np.exp(-x))))
     d = np.zeros((x.shape[0], x.shape[1]))
-    for i in range(x.shape[0]):
-        for j in range(x.shape[1]):
-            d[i][j] = (x[i][j]) * (1 - x[i][j])
-    return d
+    # for i in range(x.shape[0]):
+    #     for j in range(x.shape[1]):
+    #         d[i][j] = (x[i][j]) * (1 - x[i][j])
+    # return d
 
 
 def derivative_tanh(x):
@@ -187,9 +199,11 @@ def backward_prop(x, y, parameters, forward_cache):
     dw = []
     db = []
 
+    m = batch_size
+
     dz_output = (a[0] - y)
-    dw_output = np.dot(dz_output, a[1].T)
-    db_output = np.sum(dz_output, axis=1, keepdims=True)
+    dw_output = (1 / m) * np.dot(dz_output, a[1].T)
+    db_output = (1 / m) * np.sum(dz_output, axis=1, keepdims=True)
 
     dz.append(dz_output)
     dw.append(dw_output)
@@ -197,8 +211,8 @@ def backward_prop(x, y, parameters, forward_cache):
 
     for i in range(hidden_layer_count):
         dz_i = np.dot(w[i].T, dz[i]) * derivative_relu(a[i + 1])
-        dw_i = np.dot(dz_i, a[i + 2].T)
-        db_i = np.sum(dz_i, axis=1, keepdims=True)
+        dw_i = (1 / m) * np.dot(dz_i, a[i + 2].T)
+        db_i = (1 / m) * np.sum(dz_i, axis=1, keepdims=True)
         dz.append(dz_i)
         dw.append(dw_i)
         db.append(db_i)
@@ -241,9 +255,6 @@ def performance(softmax_layer, y):
     mx = y.shape[1]
     true_count = 0
 
-    # print(softmax_layer.shape)
-    # print(softmax_layer)
-    # print(y)
     for j in range(softmax_layer.shape[1]):
         max_prob = -1
         for i in range(softmax_layer.shape[0]):
@@ -258,6 +269,15 @@ def performance(softmax_layer, y):
 
     print("true prediction count = ", true_count)
     print(true_count / batch_size)
+    return true_count / batch_size
+
+
+def visualize_weights(parameters):
+    print(parameters["w"][0].shape)
+    print(parameters["w"][0])
+    weight_best = parameters["w"][0][4].reshape((img_size, img_size))
+    plt.imshow(weight_best, cmap='gray', vmin=np.amin(weight_best), vmax=np.amax(weight_best))
+    plt.show()
 
 
 def main(learning_rate=learning_rate):
@@ -266,14 +286,19 @@ def main(learning_rate=learning_rate):
     np.random.seed(101)
     np.random.shuffle(url_category_data)
 
-    x_train = np.zeros((n, batch_size))  # 10000, 12
-    y_train = np.zeros((c, batch_size))  # 10, 12
+    x_train = np.zeros((n, batch_size))
+    y_train = np.zeros((c, batch_size))
 
-    x_test = np.zeros((n, batch_size))  # 10000, 12
-    y_test = np.zeros((c, batch_size))  # 10, 12
+    x_validation = np.zeros((n, batch_size))
+    y_validation = np.zeros((c, batch_size))
+
+    x_test = np.zeros((n, batch_size))
+    y_test = np.zeros((c, batch_size))
 
     parameters = init_parameters()
     cost_list = []
+
+    best_parameters_from_validation = parameters
 
     for i in range(epoch):  # epoch
         data = []
@@ -285,8 +310,8 @@ def main(learning_rate=learning_rate):
 
             activation_funcs = forward_propagation(x_train, parameters)
             cost = cost_function(activation_funcs[-1], y_train)  # a2 son layer olmalı
-            performance(activation_funcs[-1], y_train)
-
+            # performance(activation_funcs[-1], y_train)
+            print(j // batch_size)
             parameters = backward_prop(x_train, y_train, parameters, activation_funcs)
             cost_list.append(cost)
 
@@ -294,7 +319,7 @@ def main(learning_rate=learning_rate):
 
         print("Cost after", i, "epoch is :", cost)
         print()
-        learning_rate *= 0.5
+        learning_rate -= 0.005
 
         print("------------------------------------------------")
         validation_data = []
@@ -311,6 +336,9 @@ def main(learning_rate=learning_rate):
     t = np.arange(0, len(cost_list))
     plt.plot(t, cost_list)
     plt.show()
+
+    if hidden_layer_count == 0:
+        visualize_weights(parameters)
 
 
 if __name__ == "__main__":
