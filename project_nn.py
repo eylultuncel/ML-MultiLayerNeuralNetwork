@@ -7,15 +7,14 @@ import matplotlib.pyplot as plt
 
 img_size = 100
 n = img_size * img_size  # features
-c = 3  # class
+c = 10  # class
 
 hidden_layer_count = 1
-learning_rate = 0.002
+learning_rate = 0.005
 epoch = 10
 batch_size = 12
-total_train_image_count = 36
+total_train_image_count = 600
 neuron_numbers = [n, 10, 10, 3]  # hl1, hl2
-
 
 
 def create_data(data, url_category_data, start_index, finish_index):
@@ -28,6 +27,7 @@ def create_data(data, url_category_data, start_index, finish_index):
             data.append([new_img_array, target])
         except Exception as e:
             pass
+    return data
 
 
 def flatten_and_normalize_data(data, start_index, end_index):
@@ -38,7 +38,7 @@ def flatten_and_normalize_data(data, start_index, end_index):
             data[i][0][j] = (data[i][0][j] / 255)
         # plt.imshow(data[i][0].reshape((img_size, img_size)), cmap='gray', vmin=0, vmax=1)
         # plt.show()
-
+    return data
 
 def visualize_parameters(last_layer):
     print(last_layer.shape)
@@ -151,8 +151,8 @@ def backward_prop(x, y, parameters, forward_cache):
     db.reverse()
 
     for i in range(hidden_layer_count + 1):
-        parameters['w'][i] = parameters['w'][i] - learning_rate * dw[i]
-        parameters['b'][i] = parameters['b'][i] - learning_rate * db[i]
+        parameters['w'][i] = parameters['w'][i] - (learning_rate * dw[i])
+        parameters['b'][i] = parameters['b'][i] - (learning_rate * db[i])
 
     return parameters
 
@@ -189,16 +189,17 @@ def init_train(data, x_train, y_train):
         class_index = data[i][1]
         y_train[class_index][i] = 1
 
+    return x_train, y_train
 
 def all_image_urls_to_csv():
-    folder_names = os.listdir('../Project/sample-img')
+    folder_names = os.listdir('../Project/raw-img')
     category = []
     files = []
     i = 0
     for k, folder in enumerate(folder_names):
-        filenames = os.listdir("../Project/sample-img/" + folder)
+        filenames = os.listdir("../Project/raw-img/" + folder)
         for file in filenames:
-            files.append("../Project/sample-img/" + folder + "/" + file)
+            files.append("../Project/raw-img/" + folder + "/" + file)
             category.append(k)
 
     df = pd.DataFrame({
@@ -217,15 +218,16 @@ def performance(softmax_layer, y):
     mx = y.shape[1]
     true_count = 0
 
-    print(softmax_layer.shape)
+    # print(softmax_layer.shape)
     print(softmax_layer)
-    print(y)
+    # print(y)
     for j in range(softmax_layer.shape[1]):
         max_prob = -1
         for i in range(softmax_layer.shape[0]):
             if max_prob < softmax_layer[i][j]:
                 max_prob = softmax_layer[i][j]
-                print(max_prob)
+
+        print(max_prob)
 
         for i in range(softmax_layer.shape[0]):
             if y[i][j] == 1 and softmax_layer[i][j] == max_prob:
@@ -254,9 +256,9 @@ def main(learning_rate=learning_rate):
         data = []
         for j in range(0, total_train_image_count, batch_size):  # batch
 
-            create_data(data, url_category_data, j, j + batch_size)
-            flatten_and_normalize_data(data, j, j + batch_size)
-            init_train(data, x_train, y_train)
+            data = create_data(data, url_category_data, j, j + batch_size)
+            data = flatten_and_normalize_data(data, j, j + batch_size)
+            x_train, y_train = init_train(data, x_train, y_train)
 
             activation_funcs = forward_propagation(x_train, parameters)
             cost = cost_function(activation_funcs[-1], y_train)  # a2 son layer olmalı
