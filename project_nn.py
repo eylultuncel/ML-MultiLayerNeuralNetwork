@@ -5,14 +5,17 @@ import os
 import cv2
 import matplotlib.pyplot as plt
 
-img_size = 100
+img_size = 50
 n = img_size * img_size  # features
 c = 10  # class
 
-hidden_layer_count = 2
+hidden_layer_count = 1
 learning_rate = 0.02
-epoch = 1
-batch_size = 32
+epoch = 30
+batch_size = 64
+# activation_func = "sigmoid"
+activation_func = "tan"
+# activation_func = "relu"
 
 total_train_image_count = 20480
 neuron_numbers = [n]  # as a start only input neurons
@@ -27,7 +30,6 @@ def all_image_urls_to_csv():
     folder_names = os.listdir('../Project/raw-img')
     category = []
     files = []
-    i = 0
     for k, folder in enumerate(folder_names):
         filenames = os.listdir("../Project/raw-img/" + folder)
         for file in filenames:
@@ -58,15 +60,14 @@ def init_parameters():
     for i in range(hidden_layer_count):
         x = round(math.sqrt(neuron_numbers[i] + c))
         neuron_numbers.append(x)
-    print(neuron_numbers)
 
     for i in range(hidden_layer_count):
-        wei = np.random.randn(neuron_numbers[i + 1], neuron_numbers[i]) * 0.01
+        wei = np.random.randn(neuron_numbers[i + 1], neuron_numbers[i]) * 0.0001
         bia = np.zeros((neuron_numbers[i + 1], 1))
         weight.append(wei)
         bias.append(bia)
 
-    wei = np.random.randn(c, neuron_numbers[hidden_layer_count]) * 0.01
+    wei = np.random.randn(c, neuron_numbers[hidden_layer_count]) * 0.0001
     bia = np.zeros((c, 1))
     weight.append(wei)
     bias.append(bia)
@@ -77,6 +78,7 @@ def init_parameters():
 
 
 def create_data(data, url_category_data, start_index, finish_index):
+    data = []
     for i in range(start_index, finish_index):
         path = url_category_data[i][0]
         target = url_category_data[i][1]
@@ -94,17 +96,18 @@ def flatten_and_normalize_data(data, start_index, end_index):
         arr = np.asarray(data[i][0])
         data[i][0] = arr.reshape((img_size * img_size,)).astype(np.float32)
         data[i][0] = (data[i][0] / 255)
-        # # plt.imshow(data[i][0].reshape((img_size, img_size)), cmap='gray', vmin=0, vmax=1)
-        # plt.show()
     return data
 
 
 def init_train(data, x_train, y_train):
-    for i in range(x_train.shape[0]):  # 10000
-        for j in range(x_train.shape[1]):  # 36
+    x_train = np.zeros((n, batch_size))
+    y_train = np.zeros((c, batch_size))
+
+    for i in range(x_train.shape[0]):
+        for j in range(x_train.shape[1]):
             x_train[i][j] = data[j][0][i]
 
-    for i in range(y_train.shape[1]):  # 36
+    for i in range(y_train.shape[1]):
         class_index = data[i][1]
         y_train[class_index][i] = 1
 
@@ -113,11 +116,6 @@ def init_train(data, x_train, y_train):
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
-    # a = np.zeros((x.shape[0], x.shape[1]))
-    # for i in range(x.shape[0]):
-    #     for j in range(x.shape[1]):
-    #         a[i][j] = 1 / (1 + math.pow(math.e, -x[i][j]))
-    # return a
 
 
 def tanh(x):
@@ -135,11 +133,6 @@ def softmax(x):
 
 def derivative_sigmoid(x):
     return (1 / (1 + np.exp(-x))) * (1 - (1 / (1 + np.exp(-x))))
-    d = np.zeros((x.shape[0], x.shape[1]))
-    # for i in range(x.shape[0]):
-    #     for j in range(x.shape[1]):
-    #         d[i][j] = (x[i][j]) * (1 - x[i][j])
-    # return d
 
 
 def derivative_tanh(x):
@@ -171,7 +164,12 @@ def forward_propagation(x, parameters):
             ai = softmax(zi)
             a.append(ai)
         else:
-            ai = relu(zi)
+            if activation_func == "sigmoid":
+                ai = sigmoid(zi)
+            elif activation_func == "tan":
+                ai = tanh(zi)
+            else:
+                ai = relu(zi)
             a.append(ai)
     return a
 
@@ -210,7 +208,12 @@ def backward_prop(x, y, parameters, forward_cache):
     db.append(db_output)
 
     for i in range(hidden_layer_count):
-        dz_i = np.dot(w[i].T, dz[i]) * derivative_relu(a[i + 1])
+        if activation_func == "sigmoid":
+            dz_i = np.dot(w[i].T, dz[i]) * derivative_sigmoid(a[i + 1])
+        elif activation_func == "tan":
+            dz_i = np.dot(w[i].T, dz[i]) * derivative_tanh(a[i + 1])
+        else:
+            dz_i = np.dot(w[i].T, dz[i]) * derivative_tanh(a[i + 1])
         dw_i = (1 / m) * np.dot(dz_i, a[i + 2].T)
         db_i = (1 / m) * np.sum(dz_i, axis=1, keepdims=True)
         dz.append(dz_i)
@@ -228,56 +231,94 @@ def backward_prop(x, y, parameters, forward_cache):
     return parameters
 
 
-def all_image_urls_to_csv():
-    folder_names = os.listdir('../Project/raw-img')
-    category = []
-    files = []
-    i = 0
-    for k, folder in enumerate(folder_names):
-        filenames = os.listdir("../Project/raw-img/" + folder)
-        for file in filenames:
-            files.append("../Project/raw-img/" + folder + "/" + file)
-            category.append(k)
-
-    df = pd.DataFrame({
-        'filename': files,
-        'category': category
-    })
-    train_df = pd.DataFrame(columns=['filename', 'category'])
-    for i in range(10):
-        train_df = train_df.append(df[df.category == i].iloc[:, :])
-
-    df.to_csv('out.csv', index=False)
-    return train_df
-
-
 def performance(softmax_layer, y):
-    mx = y.shape[1]
     true_count = 0
-
     for j in range(softmax_layer.shape[1]):
         max_prob = -1
+        index = -1
         for i in range(softmax_layer.shape[0]):
             if max_prob < softmax_layer[i][j]:
                 max_prob = softmax_layer[i][j]
-
-        # print(max_prob)
-
-        for i in range(softmax_layer.shape[0]):
-            if y[i][j] == 1 and softmax_layer[i][j] == max_prob:
-                true_count += 1
-
-    print("true prediction count = ", true_count)
-    print(true_count / batch_size)
-    return true_count / batch_size
+                index = i
+        if y[index][j] == 1:
+            true_count += 1
+    return true_count / softmax_layer.shape[1]
 
 
 def visualize_weights(parameters):
-    print(parameters["w"][0].shape)
-    print(parameters["w"][0])
-    weight_best = parameters["w"][0][4].reshape((img_size, img_size))
-    plt.imshow(weight_best, cmap='gray', vmin=np.amin(weight_best), vmax=np.amax(weight_best))
+    for i in range(c):
+        weight_best = parameters["w"][0][i].reshape((img_size, img_size))
+        plt.imshow(weight_best, cmap='gray', vmin=np.amin(weight_best), vmax=np.amax(weight_best))
+        plt.show()
+
+
+def train_amd_validation(x_train, y_train, x_validation, y_validation, url_category_data, learning_rate):
+    parameters = init_parameters()
+    cost_list = []
+    start_learning_rate = learning_rate
+
+    best_parameters_from_validation = parameters
+    best_performance_from_validation = 0
+    validation_performance_list = []
+
+    for i in range(epoch):  # epoch
+        data = []
+
+        for j in range(0, total_train_image_count, batch_size):  # batch
+            data = create_data(data, url_category_data, j, j + batch_size)
+            data = flatten_and_normalize_data(data, 0, batch_size)
+            x_train, y_train = init_train(data, x_train, y_train)
+
+            activation_funcs = forward_propagation(x_train, parameters)
+            cost = cost_function(activation_funcs[-1], y_train)  # a2 son layer olmalı
+            parameters = backward_prop(x_train, y_train, parameters, activation_funcs)
+            # cost_list.append(cost)
+            # print("Cost after", j // batch_size + 1, "batch is :", cost)
+
+        # cost = cost_function(activation_funcs[-1], y_train)  # a2 son layer olmalı
+        cost_list.append(cost)
+        print("Cost after", i, "epoch is :", cost)
+        learning_rate -= 0.005
+
+        print("------------------------------------------------")
+        performance_val = 0
+        for k in range(total_train_image_count, total_train_image_count + total_validation_image_count, batch_size):
+            validation_data = []
+
+            validation_data = create_data(validation_data, url_category_data, k, k + batch_size)
+            validation_data = flatten_and_normalize_data(validation_data, 0, batch_size)
+            x_validation, y_validation = init_train(validation_data, x_validation, y_validation)
+            activation_funcs_v = forward_propagation(x_validation, parameters)
+            # cost_v = cost_function(activation_funcs_v[-1], y_validation)
+            cost_v = 0
+            perf = performance(activation_funcs_v[-1], y_validation)
+            performance_val += perf
+        print("cost", cost_v)
+        print("performance:", perf)
+
+        performance_val = performance_val / (total_validation_image_count / batch_size)
+        validation_performance_list.append(performance_val)
+        print("PERFORMANCE : ", performance_val)
+        if performance_val >= best_performance_from_validation:
+            best_performance_from_validation = performance_val
+            print("BEST PERFORMANCE FOR NOW : ", best_performance_from_validation)
+            best_parameters_from_validation = parameters
+
+    plt.title(
+        "TRAIN DATA \n" + "Hidden Layer Count:" + str(hidden_layer_count) + "-- Learning Rate:" + str(
+            start_learning_rate) + "-- Batch:" + str(batch_size))
+    plt.plot(np.arange(0, len(cost_list)), cost_list)
+    plt.ylabel("Cost")
+    plt.xlabel("All Batches in Epochs")
     plt.show()
+
+    plt.title("VALIDATION DATA \n" + "Hidden Layer Count:" + str(hidden_layer_count) + "-- Learning Rate:" + str(
+        start_learning_rate) + "-- Batch:" + str(batch_size))
+    plt.plot(np.arange(0, len(validation_performance_list)), validation_performance_list)
+    plt.ylabel("Performance")
+    plt.xlabel("All Batches in Epochs")
+    plt.show()
+    return parameters
 
 
 def main(learning_rate=learning_rate):
@@ -295,47 +336,21 @@ def main(learning_rate=learning_rate):
     x_test = np.zeros((n, batch_size))
     y_test = np.zeros((c, batch_size))
 
-    parameters = init_parameters()
-    cost_list = []
+    parameters = train_amd_validation(x_train, y_train, x_validation, y_validation, url_category_data, learning_rate)
 
-    best_parameters_from_validation = parameters
+    test_data = []
+    performance_test = 0
+    start = total_train_image_count + total_validation_image_count
+    for j in range(start, start + total_test_image_count, batch_size):
+        test_data = create_data(test_data, url_category_data, j, j + batch_size)
+        test_data = flatten_and_normalize_data(test_data, 0, batch_size)
+        x_test, y_test = init_train(test_data, x_test, y_test)
 
-    for i in range(epoch):  # epoch
-        data = []
-        for j in range(0, total_train_image_count, batch_size):  # batch
-
-            data = create_data(data, url_category_data, j, j + batch_size)
-            data = flatten_and_normalize_data(data, j, j + batch_size)
-            x_train, y_train = init_train(data, x_train, y_train)
-
-            activation_funcs = forward_propagation(x_train, parameters)
-            cost = cost_function(activation_funcs[-1], y_train)  # a2 son layer olmalı
-            # performance(activation_funcs[-1], y_train)
-            print(j // batch_size)
-            parameters = backward_prop(x_train, y_train, parameters, activation_funcs)
-            cost_list.append(cost)
-
-            print("Cost after", j // batch_size + 1, "batch is :", cost)
-
-        print("Cost after", i, "epoch is :", cost)
-        print()
-        learning_rate -= 0.005
-
-        print("------------------------------------------------")
-        validation_data = []
-        for j in range(total_train_image_count, total_train_image_count + total_validation_image_count, batch_size):
-            validation_data = create_data(validation_data, url_category_data, j, j + batch_size)
-            validation_data = flatten_and_normalize_data(validation_data, j - total_train_image_count,
-                                                         j - total_train_image_count + batch_size)
-            x_test, y_test = init_train(data, x_test, y_test)
-
-            activation_funcs_v = forward_propagation(x_test, parameters)
-            cost = cost_function(activation_funcs_v[-1], y_test)  # a2 son layer olmalı
-            performance(activation_funcs_v[-1], y_test)
-
-    t = np.arange(0, len(cost_list))
-    plt.plot(t, cost_list)
-    plt.show()
+        activation_funcs_t = forward_propagation(x_test, parameters)
+        perf = performance(activation_funcs_t[-1], y_test)
+        performance_test += perf
+    performance_test = performance_test / (total_test_image_count / batch_size)
+    print("TEST PERFORMANCE", performance_test)
 
     if hidden_layer_count == 0:
         visualize_weights(parameters)
