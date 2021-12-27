@@ -9,12 +9,12 @@ img_size = 50
 n = img_size * img_size  # features
 c = 10  # class
 
-hidden_layer_count = 1
+hidden_layer_count = 0
 learning_rate = 0.02
-epoch = 30
+epoch = 5
 batch_size = 64
-# activation_func = "sigmoid"
-activation_func = "tan"
+activation_func = "sigmoid"
+# activation_func = "tan"
 # activation_func = "relu"
 
 total_train_image_count = 20480
@@ -255,47 +255,46 @@ def visualize_weights(parameters):
 def train_amd_validation(x_train, y_train, x_validation, y_validation, url_category_data, learning_rate):
     parameters = init_parameters()
     cost_list = []
+    validation_cost_list = []
     start_learning_rate = learning_rate
 
     best_parameters_from_validation = parameters
     best_performance_from_validation = 0
+    train_performance_list = []
     validation_performance_list = []
 
     for i in range(epoch):  # epoch
         data = []
-
+        performance_val_train = 0
         for j in range(0, total_train_image_count, batch_size):  # batch
             data = create_data(data, url_category_data, j, j + batch_size)
             data = flatten_and_normalize_data(data, 0, batch_size)
             x_train, y_train = init_train(data, x_train, y_train)
 
             activation_funcs = forward_propagation(x_train, parameters)
-            cost = cost_function(activation_funcs[-1], y_train)  # a2 son layer olmalı
+            cost = cost_function(activation_funcs[-1], y_train)
+            perf_t = performance(activation_funcs[-1], y_train)
+            performance_val_train += perf_t
             parameters = backward_prop(x_train, y_train, parameters, activation_funcs)
-            # cost_list.append(cost)
-            # print("Cost after", j // batch_size + 1, "batch is :", cost)
 
-        # cost = cost_function(activation_funcs[-1], y_train)  # a2 son layer olmalı
         cost_list.append(cost)
+        performance_val_train = performance_val_train / (total_train_image_count / batch_size)
+        train_performance_list.append(performance_val_train)
         print("Cost after", i, "epoch is :", cost)
-        learning_rate -= 0.005
-
         print("------------------------------------------------")
+
         performance_val = 0
         for k in range(total_train_image_count, total_train_image_count + total_validation_image_count, batch_size):
             validation_data = []
-
             validation_data = create_data(validation_data, url_category_data, k, k + batch_size)
             validation_data = flatten_and_normalize_data(validation_data, 0, batch_size)
             x_validation, y_validation = init_train(validation_data, x_validation, y_validation)
             activation_funcs_v = forward_propagation(x_validation, parameters)
-            # cost_v = cost_function(activation_funcs_v[-1], y_validation)
-            cost_v = 0
+            cost_v = cost_function(activation_funcs_v[-1], y_validation)
             perf = performance(activation_funcs_v[-1], y_validation)
             performance_val += perf
-        print("cost", cost_v)
-        print("performance:", perf)
-
+        validation_cost_list.append(cost_v)
+        print("Validation Cost :", cost_v)
         performance_val = performance_val / (total_validation_image_count / batch_size)
         validation_performance_list.append(performance_val)
         print("PERFORMANCE : ", performance_val)
@@ -303,22 +302,27 @@ def train_amd_validation(x_train, y_train, x_validation, y_validation, url_categ
             best_performance_from_validation = performance_val
             print("BEST PERFORMANCE FOR NOW : ", best_performance_from_validation)
             best_parameters_from_validation = parameters
+        print("--------------------------------------------------------------------")
+
+        learning_rate -= 0.005
 
     plt.title(
         "TRAIN DATA \n" + "Hidden Layer Count:" + str(hidden_layer_count) + "-- Learning Rate:" + str(
             start_learning_rate) + "-- Batch:" + str(batch_size))
-    plt.plot(np.arange(0, len(cost_list)), cost_list)
+    plt.plot(np.arange(0, len(cost_list)), cost_list, label="test")
+    plt.plot(np.arange(0, len(validation_cost_list)), validation_cost_list, label="validation")
     plt.ylabel("Cost")
-    plt.xlabel("All Batches in Epochs")
+    plt.xlabel("Epoch")
     plt.show()
 
     plt.title("VALIDATION DATA \n" + "Hidden Layer Count:" + str(hidden_layer_count) + "-- Learning Rate:" + str(
         start_learning_rate) + "-- Batch:" + str(batch_size))
-    plt.plot(np.arange(0, len(validation_performance_list)), validation_performance_list)
+    plt.plot(np.arange(0, len(train_performance_list)), train_performance_list, label="train")
+    plt.plot(np.arange(0, len(validation_performance_list)), validation_performance_list, label="validation")
     plt.ylabel("Performance")
-    plt.xlabel("All Batches in Epochs")
+    plt.xlabel("Epoch")
     plt.show()
-    return parameters
+    return best_parameters_from_validation
 
 
 def main(learning_rate=learning_rate):
