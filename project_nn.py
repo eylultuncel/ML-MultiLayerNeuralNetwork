@@ -10,9 +10,9 @@ n = img_size * img_size  # features
 c = 10  # class
 
 hidden_layer_count = 0
-learning_rate = 0.02
-epoch = 5
-batch_size = 64
+learning_rate = 0.005
+epoch = 30
+batch_size = 32
 activation_func = "sigmoid"
 # activation_func = "tan"
 # activation_func = "relu"
@@ -249,6 +249,7 @@ def visualize_weights(parameters):
     for i in range(c):
         weight_best = parameters["w"][0][i].reshape((img_size, img_size))
         plt.imshow(weight_best, cmap='gray', vmin=np.amin(weight_best), vmax=np.amax(weight_best))
+        plt.savefig(str(i)+".png")
         plt.show()
 
 
@@ -304,7 +305,7 @@ def train_amd_validation(x_train, y_train, x_validation, y_validation, url_categ
             best_parameters_from_validation = parameters
         print("--------------------------------------------------------------------")
 
-        learning_rate -= 0.005
+        learning_rate -= 0.0005
 
     plt.title(
         "TRAIN DATA \n" + "Hidden Layer Count:" + str(hidden_layer_count) + "-- Learning Rate:" + str(
@@ -313,6 +314,8 @@ def train_amd_validation(x_train, y_train, x_validation, y_validation, url_categ
     plt.plot(np.arange(0, len(validation_cost_list)), validation_cost_list, label="validation")
     plt.ylabel("Cost")
     plt.xlabel("Epoch")
+    plt.legend()
+    plt.savefig("cost.png")
     plt.show()
 
     plt.title("VALIDATION DATA \n" + "Hidden Layer Count:" + str(hidden_layer_count) + "-- Learning Rate:" + str(
@@ -321,6 +324,8 @@ def train_amd_validation(x_train, y_train, x_validation, y_validation, url_categ
     plt.plot(np.arange(0, len(validation_performance_list)), validation_performance_list, label="validation")
     plt.ylabel("Performance")
     plt.xlabel("Epoch")
+    plt.legend()
+    plt.savefig("performance.png")
     plt.show()
     return best_parameters_from_validation
 
@@ -341,6 +346,7 @@ def main(learning_rate=learning_rate):
     y_test = np.zeros((c, batch_size))
 
     parameters = train_amd_validation(x_train, y_train, x_validation, y_validation, url_category_data, learning_rate)
+    np.save("parameters.npy", parameters)
 
     test_data = []
     performance_test = 0
