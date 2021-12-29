@@ -1,0 +1,19 @@
+libpng warning: iCCP: known incorrect sRGB profile
+Cost after 29 epoch is : 2.1191563995576796
+------------------------------------------------
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+Validation Cost : 1.8701438747673298
+PERFORMANCE :  0.3025568181818182
+--------------------------------------------------------------------
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+libpng warning: iCCP: known incorrect sRGB profile
+TEST PERFORMANCE 0.2911931818181818
