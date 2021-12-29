@@ -9,13 +9,13 @@ img_size = 50
 n = img_size * img_size  # features
 c = 10  # class
 
-hidden_layer_count = 2
+hidden_layer_count = 1
 learning_rate = 0.01
 epoch = 30
-batch_size = 16
+batch_size = 32
 # activation_func = "sigmoid"
-activation_func = "tan"
-# activation_func = "relu"
+# activation_func = "tan"
+activation_func = "relu"
 
 total_train_image_count = 20480
 neuron_numbers = [n]  # as a start only input neurons
@@ -31,6 +31,7 @@ def all_image_urls_to_csv():
     category = []
     files = []
     for k, folder in enumerate(folder_names):
+        print(folder_names)
         filenames = os.listdir("../Project/raw-img/" + folder)
         for file in filenames:
             files.append("../Project/raw-img/" + folder + "/" + file)
