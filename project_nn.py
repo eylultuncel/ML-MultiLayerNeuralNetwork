@@ -9,12 +9,12 @@ img_size = 50
 n = img_size * img_size  # features
 c = 10  # class
 
-hidden_layer_count = 0
-learning_rate = 0.005
+hidden_layer_count = 2
+learning_rate = 0.01
 epoch = 30
-batch_size = 32
-activation_func = "sigmoid"
-# activation_func = "tan"
+batch_size = 16
+# activation_func = "sigmoid"
+activation_func = "tan"
 # activation_func = "relu"
 
 total_train_image_count = 20480
@@ -249,7 +249,7 @@ def visualize_weights(parameters):
     for i in range(c):
         weight_best = parameters["w"][0][i].reshape((img_size, img_size))
         plt.imshow(weight_best, cmap='gray', vmin=np.amin(weight_best), vmax=np.amax(weight_best))
-        plt.savefig(str(i)+".png")
+        plt.savefig(str(i) + ".png")
         plt.show()
 
 
@@ -305,7 +305,7 @@ def train_amd_validation(x_train, y_train, x_validation, y_validation, url_categ
             best_parameters_from_validation = parameters
         print("--------------------------------------------------------------------")
 
-        learning_rate -= 0.0005
+        learning_rate *= 0.95
 
     plt.title(
         "TRAIN DATA \n" + "Hidden Layer Count:" + str(hidden_layer_count) + "-- Learning Rate:" + str(
