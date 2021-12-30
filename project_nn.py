@@ -9,13 +9,13 @@ img_size = 50
 n = img_size * img_size  # features
 c = 10  # class
 
-hidden_layer_count = 1
+hidden_layer_count = 0
 learning_rate = 0.01
 epoch = 30
-batch_size = 64
-activation_func = "sigmoid"
+batch_size = 16
+# activation_func = "sigmoid"
 # activation_func = "tan"
-# activation_func = "relu"
+activation_func = "relu"
 
 total_train_image_count = 20480
 neuron_numbers = [n]  # as a start only input neurons
@@ -310,7 +310,7 @@ def train_amd_validation(x_train, y_train, x_validation, y_validation, url_categ
     plt.title(
         "TRAIN DATA \n" + "Hidden Layer Count:" + str(hidden_layer_count) + "-- Learning Rate:" + str(
             start_learning_rate) + "-- Batch:" + str(batch_size))
-    plt.plot(np.arange(0, len(cost_list)), cost_list, label="test")
+    plt.plot(np.arange(0, len(cost_list)), cost_list, label="train")
     plt.plot(np.arange(0, len(validation_cost_list)), validation_cost_list, label="validation")
     plt.ylabel("Cost")
     plt.xlabel("Epoch")
