@@ -12,10 +12,10 @@ c = 10  # class
 hidden_layer_count = 1
 learning_rate = 0.01
 epoch = 30
-batch_size = 32
-# activation_func = "sigmoid"
+batch_size = 64
+activation_func = "sigmoid"
 # activation_func = "tan"
-activation_func = "relu"
+# activation_func = "relu"
 
 total_train_image_count = 20480
 neuron_numbers = [n]  # as a start only input neurons
@@ -31,7 +31,6 @@ def all_image_urls_to_csv():
     category = []
     files = []
     for k, folder in enumerate(folder_names):
-        print(folder_names)
         filenames = os.listdir("../Project/raw-img/" + folder)
         for file in filenames:
             files.append("../Project/raw-img/" + folder + "/" + file)
@@ -214,7 +213,7 @@ def backward_prop(x, y, parameters, forward_cache):
         elif activation_func == "tan":
             dz_i = np.dot(w[i].T, dz[i]) * derivative_tanh(a[i + 1])
         else:
-            dz_i = np.dot(w[i].T, dz[i]) * derivative_tanh(a[i + 1])
+            dz_i = np.dot(w[i].T, dz[i]) * derivative_relu(a[i + 1])
         dw_i = (1 / m) * np.dot(dz_i, a[i + 2].T)
         db_i = (1 / m) * np.sum(dz_i, axis=1, keepdims=True)
         dz.append(dz_i)
