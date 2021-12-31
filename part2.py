@@ -202,31 +202,10 @@ def plot_loss_and_accuracy(train_loss_values, train_accuracy_values, validation_
 print(len(train_loader), len(valid_loader))
 trainModel(model, train_loader,valid_loader,2)
 
-test_loss = 0.0
-class_correct = [0. for i in range(10)]
-class_total = [0. for i in range(10)]
-model.eval()
-class_correct, class_total, train_loss= seq(model, test_loader, 'test')
-printdata(class_correct, class_total, train_loss, 1, 'test', test_loader, [], [])
-
-# obtain one batch of test images
-dataiter = iter(test_loader)
-images, labels = dataiter.next()
-images.numpy()
-
-# get sample outputs
-output = model(images)
-images = images.cpu()
-# convert output probabilities to predicted class
-_, preds_tensor = torch.max(output, 1)
-preds = np.squeeze(preds_tensor.numpy())
-
-# plot the images in the batch, along with predicted and true labels
-fig = plt.figure(figsize=(25, 4))
-for idx in np.arange(disimage):
-    ax = fig.add_subplot(2, disimage/2, idx+1, xticks=[], yticks=[])
-    plt.imshow(np.transpose(images[idx], (1, 2, 0)))
-    ax.set_title("{} ({})".format(translate[classes[preds[idx]]], translate[classes[labels[idx]]]),
-                 color=("green" if preds[idx]==labels[idx].item() else "red"))
-
-plt.show()
+def testModel(model, test_loader):
+    test_loss = 0.0
+    class_correct = [0. for i in range(10)]
+    class_total = [0. for i in range(10)]
+    model.eval()
+    class_correct, class_total, train_loss= seq(model, test_loader, 'test')
+    printdata(class_correct, class_total, train_loss, 1, 'test', test_loader, [], [])
